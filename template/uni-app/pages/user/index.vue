@@ -33,6 +33,11 @@
       @changeBarg="changeBarg"
       @goDetail="goDetail"
     ></PageDesign>
+    <view class="points-entry" style="display:flex; margin:24rpx; padding:30rpx 12rpx; background:#fff; border-radius:16rpx;">
+      <navigator style="flex:1;text-align:center;font-size:26rpx;" url="/pages/points_mall/index">积分商城</navigator>
+      <navigator style="flex:1;text-align:center;font-size:26rpx;" url="/pages/points_mall/ranking">积分排行榜</navigator>
+      <navigator style="flex:1;text-align:center;font-size:26rpx;" url="/pages/users/user_integral/index">我的积分</navigator>
+    </view>
     <image :src="copyRightPic" alt="" class="support"></image>
     <editUserModal
       :isShow="editModal"

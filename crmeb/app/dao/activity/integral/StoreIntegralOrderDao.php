@@ -137,7 +137,6 @@ class StoreIntegralOrderDao extends BaseDao
     {
         return $this->getModel()
                 ->where('uid', $uid)
-                ->where('is_del', 0)
                 ->where('product_id', $productId)
                 ->value('sum(total_num)') ?? 0;
     }

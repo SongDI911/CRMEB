@@ -169,11 +169,7 @@ class LuckLotteryRecordServices extends BaseServices
                 case 1:
                     break;
                 case 2:
-                    /** @var UserBillServices $userBillServices */
-                    $userBillServices = app()->make(UserBillServices::class);
-                    $userBillServices->income('lottery_give_integral', $uid, $prize['num'], $userInfo['integral'] + $prize['num'], $prize['id']);
-                    $userServices->update($uid, ['integral' => bcadd((string)$userInfo['integral'], (string)$prize['num'], 0)], 'uid');
-                    break;
+                    throw new ApiException('积分仅由管理员发放，不能领取抽奖积分');
                 case 3:
                     /** @var UserMoneyServices $userMoneyServices */
                     $userMoneyServices = app()->make(UserMoneyServices::class);

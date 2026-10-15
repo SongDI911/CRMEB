@@ -20,7 +20,6 @@ use app\services\wechat\WechatUserServices;
 use crmeb\exceptions\ApiException;
 use crmeb\services\CacheService;
 use crmeb\services\HttpService;
-use Firebase\JWT\JWT;
 use think\facade\Config;
 
 /**
@@ -502,48 +501,7 @@ class LoginServices extends BaseServices
      */
     public function remoteRegister(string $out_token = '')
     {
-        $info = JWT::jsonDecode(JWT::urlsafeB64Decode($out_token));
-        $userInfo = $this->dao->get(['uid' => $info->uid]);
-        $data = [];
-        if (!$userInfo) {
-            $data['uid'] = $info->uid;
-            $data['account'] = $info->phone != '' ? $info->phone : 'out_' . $info->uid;
-            $data['phone'] = $info->phone;
-            $data['pwd'] = md5('123456');
-            $data['real_name'] = $info->nickname;
-            $data['birthday'] = 0;
-            $data['card_id'] = '';
-            $data['mark'] = '';
-            $data['addres'] = '';
-            $data['user_type'] = 'h5';
-            $data['add_time'] = time();
-            $data['add_ip'] = app('request')->ip();
-            $data['last_time'] = time();
-            $data['last_ip'] = app('request')->ip();
-            $data['nickname'] = $info->nickname;
-            $data['avatar'] = $info->avatar;
-            $data['city'] = '';
-            $data['language'] = '';
-            $data['province'] = '';
-            $data['country'] = '';
-            $data['status'] = 1;
-            $data['now_money'] = $info->now_money;
-            $data['integral'] = $info->integral;
-            $data['exp'] = $info->exp;
-            $this->dao->save($data);
-        } else {
-            $data['nickname'] = $info->nickname;
-            $data['avatar'] = $info->avatar;
-            $data['now_money'] = $info->now_money;
-            $data['integral'] = $info->integral;
-            $data['exp'] = $info->exp;
-            $this->dao->update($info->uid, $data);
-        }
-        $token = $this->createToken((int)$info->uid, 'api');
-        if ($token) {
-            return ['token' => $token['token'], 'expires_time' => $token['params']['exp']];
-        } else {
-            throw new ApiException('登录失败');
-        }
+        // 原同步入口直接信任外部用户编号和资产，不能用于管理员积分商城。
+        throw new ApiException('当前积分商城不支持远程同步登录，请使用微信或账号登录');
     }
 }

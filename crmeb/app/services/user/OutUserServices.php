@@ -230,6 +230,7 @@ class OutUserServices extends BaseServices
      */
     public function changeUserData($uid, $value, $type)
     {
+        if ($type === 'integral') throw new ApiException('积分只能通过管理员积分入口调整');
         /** @var UserServices $userServices */
         $userServices = app()->make(UserServices::class);
         $res = $userServices->update($uid, [$type => $value]);

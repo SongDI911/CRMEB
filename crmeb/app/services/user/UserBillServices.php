@@ -556,15 +556,7 @@ class UserBillServices extends BaseServices
      */
     public function incomeIntegral(int $uid, string $type, array $data)
     {
-        $data['uid'] = $uid;
-        $data['category'] = 'integral';
-        $data['type'] = $type;
-        $data['pm'] = 1;
-        $data['status'] = 1;
-        $data['add_time'] = time();
-        if (!$this->dao->save($data))
-            throw new AdminException('增加记录失败');
-        return true;
+        throw new AdminException('积分仅由管理员发放，请使用管理员积分入口');
     }
 
     /**
@@ -601,6 +593,10 @@ class UserBillServices extends BaseServices
     public function income(string $type, int $uid, $number, $balance, $link_id)
     {
         $data = $this->incomeData[$type] ?? null;
+        if ($data && $data['category'] === 'integral' && $data['pm'] === 1
+            && !in_array($type, ['order_integral_refund', 'pay_product_integral_back'], true)) {
+            throw new AdminException('积分仅由管理员发放');
+        }
         if (!$data) {
             return true;
         }

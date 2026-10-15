@@ -258,7 +258,7 @@ class StoreOrderCreateServices extends BaseServices
             'paid' => 0,
             'pay_type' => $payType,
             'use_integral' => $priceData['usedIntegral'],
-            'gain_integral' => $gainIntegral,
+            'gain_integral' => 0, // 普通购物不产生积分
             'mark' => htmlspecialchars($mark),
             'combination_id' => $combinationId,
             'pink_id' => $pinkId,
@@ -358,27 +358,25 @@ class StoreOrderCreateServices extends BaseServices
      */
     public function deductIntegral(array $userInfo, bool $useIntegral, array $priceData, int $uid, $orderId)
     {
-        $res2 = true;
-        if ($useIntegral && $userInfo['integral'] > 0) {
-            /** @var UserServices $userServices */
-            $userServices = app()->make(UserServices::class);
-            if (!$priceData['SurplusIntegral']) {
-                $res2 = false !== $userServices->update($uid, ['integral' => 0]);
-            } else {
-                $res2 = false !== $userServices->bcDec($userInfo['uid'], 'integral', $priceData['usedIntegral'], 'uid');
-            }
-            /** @var UserBillServices $userBillServices */
+        if (!$useIntegral) return;
+        $used = $priceData['usedIntegral'];
+        if (!is_numeric($used) || $used < 0 || floor((float)$used) != $used) throw new ApiException('抵扣积分不正确');
+        if ($used == 0) return;
+        $this->transaction(function () use ($uid, $used, $priceData, $orderId) {
+            // 普通订单也必须与积分兑换、管理员发放共用用户行锁。
+            $user = \think\facade\Db::name('user')->where('uid', $uid)->lock(true)->find();
+            if (!$user || !$user['status'] || $user['is_del']) throw new ApiException('用户不存在或已停用');
             $userBillServices = app()->make(UserBillServices::class);
-            $res3 = $userBillServices->income('deduction', $uid, [
-                'number' => $priceData['usedIntegral'],
+            $frozen = $userBillServices->getBillSum(['uid' => $uid, 'category' => 'integral', 'is_frozen' => 1]);
+            if ($used > $user['integral'] - $frozen) throw new ApiException('可用积分不足，请重新确认订单');
+            if (!\think\facade\Db::name('user')->where('uid', $uid)->dec('integral', $used)->update()) {
+                throw new ApiException('使用积分抵扣失败');
+            }
+            if (!$userBillServices->income('deduction', $uid, [
+                'number' => $used,
                 'deductionPrice' => $priceData['deduction_price']
-            ], $userInfo['integral'] - $priceData['usedIntegral'], $orderId);
-
-            $res2 = $res2 && false != $res3;
-        }
-        if (!$res2) {
-            throw new ApiException('使用积分抵扣失败');
-        }
+            ], $user['integral'] - $used, $orderId)) throw new ApiException('使用积分抵扣失败');
+        });
     }
 
     /**

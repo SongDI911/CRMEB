@@ -18,3 +18,8 @@ export function getStoreIntegral(data) {
 		noAuth: true
 	});
 }
+
+// 登录后查看累计获赠积分排行榜和自己的积分。
+export function getIntegralRanking(data) {
+  return request.get('integral/rank', data);
+}

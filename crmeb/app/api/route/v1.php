@@ -183,6 +183,7 @@ Route::group(function () {
     })->option(['parent' => 'user', 'cate_name' => '用户分享']);
 
     Route::group(function () {
+        Route::get('integral/rank', 'v1.user.UserBillController/integralRank')->name('integralRank')->option(['real_name' => '累计积分排行榜']);
         //用户类 签到
         Route::get('sign/config', 'v1.user.UserSignController/sign_config')->name('signConfig')->option(['real_name' => '签到配置']);//签到配置
         Route::get('sign/list', 'v1.user.UserSignController/sign_list')->name('signList')->option(['real_name' => '签到列表']);//签到列表

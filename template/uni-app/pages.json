@@ -1580,7 +1580,7 @@
 		},
 		{
 			"root": "pages/points_mall",
-			"pages": [{
+			"pages": [{ "path": "ranking", "style": { "navigationBarTitleText": "积分排行榜", "enablePullDownRefresh": true } },{
 					"path": "index",
 					"style": {
 						"navigationBarTextStyle": "white",

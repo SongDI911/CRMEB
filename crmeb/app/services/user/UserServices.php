@@ -501,9 +501,7 @@ class UserServices extends BaseServices
      */
     public function addIntegral(int $uid, $old_integral, $integral)
     {
-        if (!$this->dao->update($uid, ['integral' => bcadd($old_integral, $integral, 2)]))
-            throw new AdminException('增加用户积分失败');
-        return true;
+        throw new AdminException('请通过管理员积分发放入口操作');
     }
 
     /**
@@ -777,6 +775,15 @@ class UserServices extends BaseServices
      */
     public function updateInfo(int $id, array $data)
     {
+        return $this->transaction(function () use ($id, $data) {
+            // 在事务第一次普通读取前锁定用户，避免累计积分使用等待锁前的旧快照。
+            \think\facade\Db::name('user')->where('uid', $id)->lock(true)->find();
+            return $this->updateInfoLocked($id, $data);
+        });
+    }
+
+    private function updateInfoLocked(int $id, array $data)
+    {
         $user = $this->getUserInfo($id);
         if (!$user) {
             throw new AdminException('数据不存在');
@@ -818,24 +825,11 @@ class UserServices extends BaseServices
         } else {
             $res1 = true;
         }
-        if ($data['integration_status'] && $data['integration']) {//积分增加或者减少
-            /** @var UserBillServices $userBill */
-            $userBill = app()->make(UserBillServices::class);
-            $integral_data = ['link_id' => $data['adminId'] ?? 0, 'number' => $data['integration']];
-            if ($data['integration_status'] == 1) {//增加
-                $edit['integral'] = bcadd($user['integral'], $data['integration'], 2);
-                $integral_data['balance'] = $edit['integral'];
-                $integral_data['title'] = '系统增加积分';
-                $integral_data['mark'] = $data['mark'] == '' ? '系统增加了' . floatval($data['integration']) . '积分' : $data['mark'];
-                $res2 = $userBill->incomeIntegral($user['uid'], 'system_add', $integral_data);
-            } else if ($data['integration_status'] == 2) {//减少
-                $edit['integral'] = bcsub($user['integral'], $data['integration'], 2);
-                $integral_data['balance'] = $edit['integral'];
-                $integral_data['title'] = '系统减少积分';
-                $integral_data['mark'] = $data['mark'] == '' ? '系统扣除了' . floatval($data['integration']) . '积分' : $data['mark'];
-                $res2 = $userBill->expendIntegral($user['uid'], 'system_sub', $integral_data);
-            }
-            event('OutPushListener', ['user_update_push', ['uid' => $id, 'type' => 'point', 'value' => $data['integration_status'] == 2 ? -intval($data['integration']) : $data['integration']]]);
+        if ($data['integration_status']) {
+            $res2 = app()->make(AdminPointsServices::class)->adjust(
+                $id, $data['integration'], (int)$data['integration_status'],
+                (int)($data['adminId'] ?? 0), (string)($data['mark'] ?? '')
+            );
         } else {
             $res2 = true;
         }
@@ -892,10 +886,10 @@ class UserServices extends BaseServices
             $f[] = Form::radio('money_status', '修改余额', 1)->options([['value' => 1, 'label' => '增加'], ['value' => 2, 'label' => '减少']]);
             $f[] = Form::number('money', '余额', 0)->min(0)->max(999999.99);
         } else {
-            $f[] = Form::radio('integration_status', '修改积分', 1)->options([['value' => 1, 'label' => '增加'], ['value' => 2, 'label' => '减少']]);
-            $f[] = Form::number('integration', '积分', 0)->min(0)->precision(0)->max(999999);
+            $f[] = Form::radio('integration_status', '积分操作', 1)->info('发放或撤销会同步更新累计积分；礼品兑换不影响排名')->options([['value' => 1, 'label' => '发放积分'], ['value' => 2, 'label' => '撤销错发积分']]);
+            $f[] = Form::number('integration', '积分', 1)->min(1)->precision(0)->max(999999999);
         }
-        $f[] = Form::input('mark', '备注', '')->type('textarea')->required();
+        $f[] = Form::input('mark', '操作原因', '')->type('textarea')->placeholder('请填写操作原因，最多200字')->required();
         return create_form($type == 'money' ? '修改余额' : '修改积分', $f, Url::buildUrl('/user/update_other/' . $id), 'PUT');
     }
 
@@ -2291,7 +2285,7 @@ class UserServices extends BaseServices
         $res1 = false;
         $res2 = false;
         $reward_money = sys_config('reward_money');
-        $reward_integral = sys_config('reward_integral');
+        $reward_integral = 0; // 积分只能由管理员发放，注册奖励配置不再生效。
         $edit = array();
         if ($reward_money > 0) {//余额增加
             /** @var UserMoneyServices $userMoneyServices */

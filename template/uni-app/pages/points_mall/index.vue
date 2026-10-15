@@ -41,65 +41,9 @@
 				<image :src="imgHost + '/statics/images/no-thing.png'" mode=""></image>
 				<view class="fontimg">{{$t(`暂无商品，去看点别的吧`)}}</view>
 			</view>
-			<view class="footer">
-				<view class="body-title">
-					<text class="title">{{$t(`轻松赚积分`)}}</text>
-					<text></text>
-				</view>
-				<view class="footer-list">
-					<view class="list-left">
-						<image class="icon-sty" src="./static/go-shoping.png" mode=""></image>
-						<view class="list-left-right">
-							<view class="title">
-								{{$t(`购买商品`)}}
-							</view>
-							<view class="trip">
-								{{$t(`购买商品可获得积分奖励`)}}
-							</view>
-						</view>
-					</view>
-					<navigator url="/pages/index/index" open-type="switchTab" class="right-box">
-						<text class="go-jump">
-							{{$t(`去完成`)}}
-						</text>
-					</navigator>
-				</view>
-				<view class="footer-list">
-					<view class="list-left">
-						<image class="icon-sty" src="./static/everyday.png" mode=""></image>
-						<view class="list-left-right">
-							<view class="title">
-								{{$t(`每日签到活动`)}}
-							</view>
-							<view class="trip">
-								{{$t(`每日签到可获得积分奖励`)}}
-							</view>
-						</view>
-					</view>
-					<navigator url="/pages/users/user_sgin/index" class="right-box">
-						<text class="go-jump">
-							{{$t(`去完成`)}}
-						</text>
-					</navigator>
-				</view>
-				<view class="footer-list">
-					<view class="list-left">
-						<image class="icon-sty" src="./static/luck-draw.png" mode=""></image>
-						<view class="list-left-right">
-							<view class="title">
-								{{$t(`九宫格抽奖活动`)}}
-							</view>
-							<view class="trip">
-								{{$t(`幸运抽奖可获得积分奖励`)}}
-							</view>
-						</view>
-					</view>
-					<navigator url="/pages/goods/lottery/grids/index?type=1" class="right-box">
-						<text class="go-jump">
-							{{$t(`去完成`)}}
-						</text>
-					</navigator>
-				</view>
+			<view class="footer" style="padding: 30rpx; line-height: 1.8; color: #666; font-size: 26rpx;">
+				<view style="font-weight: bold; color: #222;">积分获取与使用</view>
+				<view>积分仅由管理员发放。使用可用积分兑换礼品，不影响累计获赠积分和排行榜名次。</view>
 			</view>
 		</view>
 	</view>
@@ -134,24 +78,10 @@
 				duration: 500,
 				imgUrls: [],
 				goodList: [],
-				modelList: [{
-						title: this.$t(`我的积分`),
-						imgUrl: './static/my-point.png',
-						url: "/pages/users/user_integral/index"
-					},
-					{
-						title: this.$t(`每日签到`),
-						imgUrl: './static/sign-in.png',
-						url: '/pages/users/user_sgin/index'
-					}, {
-						title: this.$t(`积分抽奖`),
-						imgUrl: './static/points-lottery.png',
-						url: '/pages/goods/lottery/grids/index?type=1'
-					}, {
-						title: this.$t(`兑换记录`),
-						imgUrl: './static/exchange.png',
-						url: "/pages/points_mall/exchange_record"
-					},
+				modelList: [
+					{ title: '我的积分', imgUrl: './static/my-point.png', url: '/pages/users/user_integral/index' },
+					{ title: '积分排行榜', imgUrl: './static/sign-in.png', url: '/pages/points_mall/ranking' },
+					{ title: '兑换记录', imgUrl: './static/exchange.png', url: '/pages/points_mall/exchange_record' }
 				]
 			}
 		},

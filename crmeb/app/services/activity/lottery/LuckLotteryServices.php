@@ -435,77 +435,7 @@ class LuckLotteryServices extends BaseServices
      */
     public function luckLottery(int $uid, int $lottery_id, $channel_type)
     {
-        /** @var UserServices $userServices */
-        $userServices = app()->make(UserServices::class);
-        $userInfo = $userServices->getUserInfo($uid);
-        if (!$userInfo) {
-            throw new ApiException('用户不存在');
-        }
-        $lottery = $this->dao->getLottery($lottery_id, '*', [], true);
-        if (!$lottery) {
-            throw new ApiException('活动不存在或已删除');
-        }
-        $userInfo = $userInfo->toArray();
-        $lottery = $lottery->toArray();
-        //验证用户身份
-        $this->checkoutUserAuth($uid, $lottery_id, $userInfo, $lottery);
-
-        /** @var LuckPrizeServices $lotteryPrizeServices */
-        $lotteryPrizeServices = app()->make(LuckPrizeServices::class);
-        $lotteryPrize = $lotteryPrizeServices->getPrizeList($lottery_id);
-        if (!$lotteryPrize) {
-            throw new ApiException('活动状态有误，请联系管理员');
-        }
-        if ($this->getLotteryNum($uid, $lottery_id, $userInfo, $lottery) < 1) {
-            //抽奖类型：1:积分2：余额3：下单支付成功4：订单评价5：拉新人
-            switch ($lottery['factor']) {
-                case 1:
-                    throw new ApiException('可用积分不足，没有更多抽奖次数');
-                case 2:
-                    throw new ApiException('余额不足，没有更多抽奖次数');
-                case 3:
-                    throw new ApiException('购买商品之后获得更多抽奖次数');
-                case 4:
-                    throw new ApiException('订单完成评价之后获得更多抽奖次数');
-                case 5:
-                    throw new ApiException('邀请更多好友获取抽奖次数');
-                default:
-                    throw new ApiException('暂未有该类型活动');
-            }
-        }
-        return $this->transaction(function () use ($uid, $lotteryPrize, $userInfo, $lottery, $channel_type) {
-            /** @var LuckPrizeServices $luckPrizeServices */
-            $luckPrizeServices = app()->make(LuckPrizeServices::class);
-            //随机抽奖
-            $prize = $luckPrizeServices->getLuckPrize($lotteryPrize);
-            if (!$prize) {
-                throw new ApiException('活动状态有误，请联系管理员');
-            }
-            //中奖扣除积分、余额
-            $this->lotteryFactor($uid, $userInfo, $lottery);
-            //中奖减少奖品数量
-            $luckPrizeServices->decPrizeNum($prize['id'], $prize);
-            /** @var LuckLotteryRecordServices $lotteryRecordServices */
-            $lotteryRecordServices = app()->make(LuckLotteryRecordServices::class);
-            //中奖写入记录
-            $record = $lotteryRecordServices->insertPrizeRecord($uid, $prize, $userInfo, $channel_type);
-            //不是站内商品直接领奖
-            if ($prize['type'] != 6) {
-                $lotteryRecordServices->receivePrize($uid, (int)$record->id);
-            }
-            $prize['lottery_record_id'] = $record->id;
-
-            //自定义事件-用户抽奖
-            event('CustomEventListener', ['user_lottery', [
-                'uid' => $uid,
-                'lottery_id' => $prize['lottery_id'],
-                'prize_id' => $prize['id'],
-                'record_id' => $record['id'],
-                'lottery_time' => date('Y-m-d H:i:s'),
-            ]]);
-
-            return $prize;
-        });
+        throw new ApiException('当前积分仅用于礼品兑换，抽奖不再开放');
     }
 
     /**

@@ -150,87 +150,7 @@ class UserSignServices extends BaseServices
      */
     public function sign(int $uid)
     {
-        /** @var UserServices $userServices */
-        $userServices = app()->make(UserServices::class);
-
-        //检测用户是否存在
-        $user = $userServices->getUserInfo($uid);
-        if (!$user) {
-            throw new ApiException('用户不存在');
-        }
-
-        $userServices->offMemberLevel($uid);
-
-        //检测今天是否已经签到
-        if ($this->getIsSign($uid, 'today')) {
-            throw new ApiException('已经签到');
-        }
-        $title = '签到奖励';
-        //检测昨天是否签到，如果没有签到，连续签到清0
-        if (!$this->getIsSign($uid, 'yesterday')) $user->sign_num = 0;
-
-        //获取签到周期配置，如果周签到，每周一清空连续签到记录，如果月签到，每月一日清空连续签到记录
-        $sign_mode = sys_config('sign_mode', -1);
-        if ($sign_mode == 1 && date('w') == 1) $user->sign_num = 0;
-        if ($sign_mode == 0 && date('d') == 1) $user->sign_num = 0;
-
-        //连续签到天数
-        $user->sign_num += 1;
-        $continuousDays = $user->sign_num;
-        //累积签到天数
-        $cumulativeDays = $this->dao->getCumulativeDays($sign_mode, $uid);
-
-        //基础签到奖励
-        $sign_point = sys_config('sign_give_point', 0);
-        $sign_exp = sys_config('member_func_status', 1) ? sys_config('sign_give_exp', 0) : 0;
-
-        //连续签到和累积签到奖励
-        $signRewardsServices = app()->make(SystemSignRewardServices::class);
-        [$continuousStatus, $continuousRewardPoint, $continuousRewardExp] = $signRewardsServices->getSignRewards(0, $continuousDays);
-        [$cumulativeStatus, $cumulativeRewardPoint, $cumulativeRewardExp] = $signRewardsServices->getSignRewards(1, $cumulativeDays);
-        if ($continuousStatus && $cumulativeStatus) {
-            $sign_point = $continuousRewardPoint + $cumulativeRewardPoint;
-            $sign_exp = $continuousRewardExp + $cumulativeRewardExp;
-        } elseif ($continuousStatus) {
-            $sign_point = $continuousRewardPoint;
-            $sign_exp = $continuousRewardExp;
-        } elseif ($cumulativeStatus) {
-            $sign_point = $cumulativeRewardPoint;
-            $sign_exp = $cumulativeRewardExp;
-        }
-
-        //会员签到积分会员奖励
-        if ($user->is_money_level > 0) {
-            //看是否开启签到积分翻倍奖励
-            /** @var MemberCardServices $memberCardService */
-            $memberCardService = app()->make(MemberCardServices::class);
-            $sign_rule_number = $memberCardService->isOpenMemberCard('sign');
-            if ($sign_rule_number) {
-                $up_num = (int)$sign_rule_number * $sign_point - $sign_point;
-                $sign_point = (int)$sign_rule_number * $sign_point;
-                if (!$this->getIsSign($uid, 'yesterday')) $title = '签到奖励(SVIP+' . $up_num . ')';
-            }
-        }
-
-        //增加签到数据
-        $this->transaction(function () use ($uid, $title, $sign_point, $user, $sign_exp) {
-            $this->setSignData($uid, $title, $sign_point, $user['integral'], (int)$user['exp'], $sign_exp);
-            $user->integral = (int)$user->integral + (int)$sign_point;
-            if ($sign_exp) $user->exp = bcadd((string)$user->exp, (string)$sign_exp, 2);
-            if (!$user->save()) {
-                throw new ApiException('修改用户信息失败');
-            }
-        });
-
-        //自定义事件-用户签到
-        event('CustomEventListener', ['user_sign', [
-            'uid' => $uid,
-            'sign_point' => $sign_point,
-            'sign_exp' => $sign_exp,
-            'sign_time' => date('Y-m-d H:i:s'),
-        ]]);
-
-        return $sign_point;
+        throw new ApiException('积分仅由管理员发放，签到不再开放');
     }
 
     /**
@@ -268,9 +188,9 @@ class UserSignServices extends BaseServices
         if ($integral || $all) {
             /** @var UserBillServices $userBill */
             $userBill = app()->make(UserBillServices::class);
-            $user['sum_integral'] = intval($userBill->getRecordCount($user['uid'], 'integral', 'sign,system_add,gain,lottery_add,product_gain,pay_product_integral_back'));
+            $user['sum_integral'] = app()->make(AdminPointsServices::class)->total((int)$uid);
             $user['deduction_integral'] = intval($userBill->getRecordCount($user['uid'], 'integral', 'deduction,lottery_use,order_deduction,storeIntegral_use', '', true) ?? 0);
-            $user['today_integral'] = intval($userBill->getRecordCount($user['uid'], 'integral', 'sign,system_add,gain,product_gain,lottery_add,pay_product_integral_back', 'today'));
+            $user['today_integral'] = app()->make(AdminPointsServices::class)->today((int)$uid);
             /** @var UserBillServices $userBillServices */
             $userBillServices = app()->make(UserBillServices::class);
             $user['frozen_integral'] = $userBillServices->getBillSum(['uid' => $user['uid'], 'is_frozen' => 1]);

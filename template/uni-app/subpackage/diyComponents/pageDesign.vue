@@ -167,10 +167,11 @@
               :dataConfig="item"
             ></videos>
             <!-- #endif -->
-            <signIn
-              v-else-if="item.name == 'signIn'"
-              :dataConfig="item"
-            ></signIn>
+            <navigator v-else-if="item.name == 'signIn'" url="/pages/points_mall/ranking"
+              style="margin:24rpx;padding:30rpx;background:#fff;border-radius:16rpx;">
+              <view style="font-size:30rpx;font-weight:bold;">积分排行榜</view>
+              <view style="margin-top:12rpx;font-size:24rpx;color:#888;">积分由管理员发放，兑换礼品不影响排名</view>
+            </navigator>
             <hotspot
               v-else-if="item.name == 'hotspot'"
               :dataConfig="item"

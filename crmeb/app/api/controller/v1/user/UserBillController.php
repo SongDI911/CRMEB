@@ -40,6 +40,14 @@ class UserBillController
         $this->services = $services;
     }
 
+    /** 累计获赠积分排行榜，仅登录用户可查看。 */
+    public function integralRank(Request $request)
+    {
+        [$page, $limit] = $request->getMore([[['page', 'd'], 1], [['limit', 'd'], 20]], true);
+        return app('json')->success(app()->make(\app\services\user\AdminPointsServices::class)
+            ->ranking((int)$request->uid(), (int)$page, (int)$limit));
+    }
+
     /**
      * 推广数据    昨天的佣金   累计提现金额  当前佣金
      * @param Request $request

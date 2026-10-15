@@ -342,26 +342,27 @@ class StoreIntegralServices extends BaseServices
      */
     public function decIntegralStock(int $num, int $integralId, string $unique)
     {
-        $product_id = $this->dao->value(['id' => $integralId], 'product_id');
-        if ($unique) {
-            /** @var StoreProductAttrValueServices $skuValueServices */
-            $skuValueServices = app()->make(StoreProductAttrValueServices::class);
-            //减去积分商品的sku库存增加销量
-            $res = false !== $skuValueServices->decProductAttrStock($integralId, $unique, $num, 4);
-            //减去积分商品库存
-            $res = $res && $this->dao->decStockIncSales(['id' => $integralId, 'type' => 4], $num);
-            //获取拼团的sku
-            $sku = $skuValueServices->value(['product_id' => $integralId, 'unique' => $unique, 'type' => 4], 'suk');
-            //减去当前普通商品sku的库存增加销量
-            $res = $res && $skuValueServices->decStockIncSales(['product_id' => $product_id, 'suk' => $sku, 'type' => 0], $num);
-        } else {
-            $res = false !== $this->dao->decStockIncSales(['id' => $integralId, 'type' => 4], $num);
-        }
-        /** @var StoreProductServices $services */
-        $services = app()->make(StoreProductServices::class);
-        //减去普通商品库存
-        $res = $res && $services->decProductStock($num, $product_id);
-        return $res;
+        if ($num < 1 || $unique === '') return false;
+        return $this->transaction(function () use ($num, $integralId, $unique) {
+            $db = \think\facade\Db::class;
+            $productId = $db::name('store_integral')->where('id', $integralId)->value('product_id');
+            $sku = $db::name('store_product_attr_value')->where('product_id', $integralId)
+                ->where('type', 4)->where('unique', $unique)->value('suk');
+            if (!$productId || $sku === null) throw new ApiException('积分商品规格不存在');
+            // Each update checks stock in the database, so concurrent exchanges cannot oversell.
+            $queries = [
+                $db::name('store_integral')->where('id', $integralId)->where('quota', '>=', $num)->dec('quota', $num),
+                $db::name('store_product_attr_value')->where('product_id', $integralId)->where('type', 4)->where('unique', $unique)->where('quota', '>=', $num)->dec('quota', $num),
+                $db::name('store_product_attr_value')->where('product_id', $productId)->where('type', 0)->where('suk', $sku),
+                $db::name('store_product')->where('id', $productId),
+            ];
+            foreach ($queries as $query) {
+                if (!$query->where('stock', '>=', $num)->dec('stock', $num)->inc('sales', $num)->update()) {
+                    throw new ApiException('该商品库存不足');
+                }
+            }
+            return true;
+        });
     }
 
     /**
@@ -387,6 +388,7 @@ class StoreIntegralServices extends BaseServices
      */
     public function checkoutProductStock(int $uid, int $integralId, int $num = 1, string $unique = '')
     {
+        if ($num < 1) throw new ApiException('兑换数量必须大于0');
         /** @var StoreProductAttrValueServices $attrValueServices */
         $attrValueServices = app()->make(StoreProductAttrValueServices::class);
         if ($unique == '') {
@@ -406,6 +408,7 @@ class StoreIntegralServices extends BaseServices
             throw new ApiException('每人总共限购{:num}件', ['num' => $StoreIntegralInfo['num']]);
         }
         $res = $attrValueServices->getOne(['product_id' => $integralId, 'unique' => $unique, 'type' => 4]);
+        if (!$res) throw new ApiException('积分商品规格不存在');
         if ($num > $res['quota']) {
             throw new ApiException('该商品库存不足{:num}', ['num' => $num]);
         }

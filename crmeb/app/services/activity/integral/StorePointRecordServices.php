@@ -37,6 +37,8 @@ class StorePointRecordServices extends BaseServices
         $where['category'] = 'integral';
         $status = [
             'invite_user' => '邀新奖励',
+            'admin_award' => '管理员发放积分',
+            'admin_revoke' => '管理员撤销积分',
             'system_add' => '系统增加积分',
             'system_sub' => '系统减少积分',
             'gain' => '下单赠送积分',

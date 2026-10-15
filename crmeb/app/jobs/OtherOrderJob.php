@@ -88,28 +88,8 @@ class OtherOrderJob extends BaseJobs
      */
     public function sendMemberIntegral($order)
     {
-        //只有线下付款才奖励
-        if ($order['type'] == 3) {
-            $order_give_integral = sys_config('order_give_integral');
-            $order_integral = bcmul($order_give_integral, (string)$order['pay_price'], 0);
-            /** @var UserServices $userService */
-            $userService = app()->make(UserServices::class);
-            $userInfo = $userService->getUserInfo($order['uid']);
-            if (!$userInfo) return false;
-            if ($userInfo['is_money_level'] > 0) {
-                //看是否开启消费返积分翻倍奖励
-                /** @var MemberCardServices $memberCardService */
-                $memberCardService = app()->make(MemberCardServices::class);
-                $integral_rule_number = $memberCardService->isOpenMemberCard('integral');
-                if ($integral_rule_number) {
-                    $order_integral = bcadd($order_integral, $integral_rule_number, 2);
-                }
-            }
-            if ($order_integral > 0) {
-                $integral = bcadd(abs($userInfo['integral']), abs($order_integral), 2);
-                $userService->update(['uid' => $order['uid']], ['integral' => $integral]);
-            }
-        }
+        // 线下付款不再产生积分。
+        return true;
     }
 
     /**

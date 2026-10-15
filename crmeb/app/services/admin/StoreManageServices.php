@@ -522,24 +522,7 @@ class StoreManageServices extends BaseServices
                 $userServices->update($uid, $edit);
                 break;
             case 1: // 积分
-                /** @var UserBillServices $userBill */
-                $userBill = app()->make(UserBillServices::class);
-                $integral_data = ['link_id' => 0, 'number' => $data['number']];
-                if ($data['status'] == 1) { //增加
-                    $edit['integral'] = bcadd($userInfo['integral'], $data['number'], 2);
-                    $integral_data['balance'] = $edit['integral'];
-                    $integral_data['title'] = '系统增加积分';
-                    $integral_data['mark'] = '系统增加了' . floatval($data['number']) . '积分';
-                    $userBill->incomeIntegral($uid, 'system_add', $integral_data);
-                } else { //减少
-                    $edit['integral'] = bcsub($userInfo['integral'], $data['number'], 2);
-                    $integral_data['balance'] = $edit['integral'];
-                    $integral_data['title'] = '系统减少积分';
-                    $integral_data['mark'] = '系统扣除了' . floatval($data['number']) . '积分';
-                    $userBill->expendIntegral($uid, 'system_sub', $integral_data);
-                }
-                $userServices->update($uid, $edit);
-                break;
+                throw new ApiException('请由管理员在管理后台发放或撤销积分，并填写原因');
             case 2: // 等级
                 $userServices->saveGiveLevel((int)$uid, (int)$data['level']);
                 break;

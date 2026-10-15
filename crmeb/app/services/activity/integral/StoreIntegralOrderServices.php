@@ -159,6 +159,7 @@ class StoreIntegralOrderServices extends BaseServices
      */
     public function createOrder($uid, $addressId, $mark = '', $userInfo, $num, $productInfo)
     {
+        if ($num < 1 || $productInfo['price'] < 0) throw new ApiException('兑换数量或积分价格不正确');
         /** @var UserAddressServices $addressServices */
         $addressServices = app()->make(UserAddressServices::class);
         if (!$addressId) {
@@ -190,6 +191,12 @@ class StoreIntegralOrderServices extends BaseServices
             'channel_type' => $userInfo['user_type']
         ];
         $order = $this->transaction(function () use ($orderInfo, $userInfo, $productInfo, $uid, $num, $total_price) {
+            // 与管理员发放锁定同一用户，事务内重新检查余额及兑换限额。
+            $userInfo = \think\facade\Db::name('user')->where('uid', $uid)->lock(true)->find();
+            if (!$userInfo || !$userInfo['status'] || $userInfo['is_del']) throw new ApiException('用户不存在或已停用');
+            $frozen = app()->make(UserBillServices::class)->getBillSum(['uid' => $uid, 'category' => 'integral', 'is_frozen' => 1]);
+            if ($total_price > $userInfo['integral'] - $frozen) throw new ApiException('可用积分不足');
+            app()->make(StoreIntegralServices::class)->checkoutProductStock((int)$uid, (int)$productInfo['product_id'], (int)$num, $productInfo['unique']);
             //创建订单
             $order = $this->dao->save($orderInfo);
             if (!$order) {
@@ -199,16 +206,16 @@ class StoreIntegralOrderServices extends BaseServices
             $this->decGoodsStock($productInfo, $num);
             //减积分
             $this->deductIntegral($userInfo, $total_price, (int)$userInfo['uid'], $order->id);
+            // 状态日志必须与订单、库存和积分一起提交，避免失败响应后实际已经兑换。
+            $statusService = app()->make(StoreIntegralOrderStatusServices::class);
+            if (!$statusService->save([
+                'oid' => $order['id'],
+                'change_type' => 'cache_key_create_order',
+                'change_message' => '订单生成',
+                'change_time' => time()
+            ])) throw new ApiException('订单状态保存失败');
             return $order;
         });
-        /** @var StoreIntegralOrderStatusServices $statusService */
-        $statusService = app()->make(StoreIntegralOrderStatusServices::class);
-        $statusService->save([
-            'oid' => $order['id'],
-            'change_type' => 'cache_key_create_order',
-            'change_message' => '订单生成',
-            'change_time' => time()
-        ]);
         return $order;
     }
 
